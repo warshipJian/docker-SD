@@ -1,0 +1,131 @@
+FROM centos
+USER root
+
+#### 安装系统工具 ####
+ARG INSTALL_SYSTOOLS=false
+RUN if [ ${INSTALL_SYSTOOLS} = true ]; then \
+    yum makecache fast && yum -y --setopt=tsflags=nodocs update \
+    && yum -y --setopt=tsflags=nodocs install https://mirror.webtatic.com/yum/el7/webtatic-release.rpm \
+    && yum install wget gcc cmake vim htop tmux sudo net-tools -y \
+    && yum clean all && yum history new \
+;fi
+
+#### 安装php7 ####
+ARG INSTALL_PHP=false
+RUN if [ ${INSTALL_PHP} = true ]; then \
+    yum -y --setopt=tsflags=nodocs install git php71w php71w-cli php71w-common php71w-opcache php71w-mysql php71w-mbstring php71w-xml php71w-pdo php71w-devel \
+    && yum -y install php71w-bcmath \
+    && yum -y install php71w-gd \
+    && yum -y install php71w-posix \
+    && yum -y install openssl openssl-devel \
+    && yum clean all && yum history new \
+;fi
+
+#### 安装libzip ####
+ARG INSTALL_LIBZIP=false
+RUN if [ ${INSTALL_LIBZIP} = true ]; then \
+    curl -L -o /tmp/libzip-0.11.2-6.el7.rpm "http://packages.psychotic.ninja/7/plus/x86_64/RPMS//libzip-0.11.2-6.el7.psychotic.x86_64.rpm" \
+    && rpm -ivh /tmp/libzip-0.11.2-6.el7.rpm \
+    && rm -fr /tmp/libzip-0.11.2-6.el7.rpm \
+    && curl -L -o /tmp/libzip-devel-0.11.2-6.el7.rpm "http://packages.psychotic.ninja/7/plus/x86_64/RPMS//libzip-devel-0.11.2-6.el7.psychotic.x86_64.rpm" \
+    && rpm -ivh /tmp/libzip-devel-0.11.2-6.el7.rpm \
+    && rm -fr /tmp/libzip-devel-0.11.2-6.el7.rpm \
+;fi
+
+#### 安装hiredis #####
+ARG INSTALL_HIREDIS=false
+RUN if [ ${INSTALL_HIREDIS} = true ]; then \
+    curl -L -o /tmp/hiredis-last-0.13.3-1.el7.remi.x86_64.rpm "http://rpms.famillecollet.com/enterprise/7/remi/x86_64//hiredis-last-0.13.3-1.el7.remi.x86_64.rpm" \
+    && rpm -ivh /tmp/hiredis-last-0.13.3-1.el7.remi.x86_64.rpm \
+    && rm -fr /tmp/hiredis-last-0.13.3-1.el7.remi.x86_64.rpm \ 
+    && curl -L -o /tmp/hiredis-0.13.3.gz "https://github.com/redis/hiredis/archive/v0.13.3.tar.gz" \
+    && mkdir -p hiredis-0.13.3_tmp \
+    && tar -C hiredis-0.13.3_tmp -zxvf /tmp/hiredis-0.13.3.gz --strip 1 \
+    && ( \
+        cd hiredis-0.13.3_tmp \
+        && make -j$(nproc) \
+        && make install \
+        && ldconfig \
+    ) \
+    && cd .. \
+    && rm -fr hiredis-0.13.3_tmp \
+    && rm -fr /tmp/hiredis-0.13.3.gz \
+;fi
+
+#### 安装composer ####
+#ARG INSTALL_COMPOSER=false
+#RUN if [ ${INSTALL_COMPOSER} = true ]; then \
+#    curl -L -o /tmp/composer https://getcomposer.org/download/1.6.5/composer.phar \
+#    && sudo mv /tmp/composer /usr/local/bin \
+#    && sudo chmod +x /usr/local/bin/composer \
+#    && composer config -g repo.packagist composer https://packagist.phpcomposer.com \
+#;fi
+
+#### 安装inotify ####
+ARG INSTALL_INOTIFY=false
+RUN if [ ${INSTALL_INOTIFY} = true ]; then \
+    curl -L -o /tmp/inotify-2.0.0.tgz "https://pecl.php.net/get/inotify-2.0.0.tgz" \
+    && mkdir -p inotify-2.0.0_tmp \
+    && tar -C inotify-2.0.0_tmp -zxvf /tmp/inotify-2.0.0.tgz --strip 1 \
+    && cd inotify-2.0.0_tmp \
+    && phpize \
+    && ./configure \
+    && make -j$(nproc) \
+    && make install \
+    && cd .. \
+    && rm -fr inotify-2.0.0_tmp \
+    && rm -fr /tmp/inotify-2.0.0.tgz \
+    && echo '' >> /etc/php.ini \
+    && echo 'extension=inotify.so' >> /etc/php.ini \ 
+;fi
+
+#### 安装ZipArchive ####
+ARG INSTALL_ZIPARCHIVE=false
+RUN if [ ${INSTALL_ZIPARCHIVE} = true ]; then \
+    curl -L -o /tmp/zip.tgz "https://pecl.php.net/get/zip-1.15.2.tgz" \
+    && mkdir -p zip_tmp \
+    && tar -C zip_tmp -zxvf /tmp/zip.tgz --strip 1 \
+    && cd zip_tmp \
+    && phpize \
+    && ./configure \
+    && make -j$(nproc) \
+    && make install \
+    && cd .. \
+    && rm -fr zip_tmp \
+    && rm -fr /tmp/zip.tgz  \
+    #&& echo 'extension=zip.so' >> /etc/php.ini
+;fi
+
+#### 安装PHPREDIS ####
+ARG INSTALL_PHPREDIS=false
+RUN if [ ${INSTALL_PHPREDIS} = true ]; then \
+    curl -L -o /tmp/phpredis.tar.gz "https://github.com/phpredis/phpredis/archive/4.0.2.tar.gz" \
+    && mkdir -p phpredis_tmp \
+    && tar -C phpredis_tmp -zxvf /tmp/phpredis.tar.gz --strip 1 \
+    && cd phpredis_tmp \
+    && phpize \
+    && ./configure \
+    && make -j$(nproc) \
+    && make install \
+    && cd .. \
+    && rm -fr phpredis_tmp \
+    && rm -fr /tmp/phpredis.tar.gz \
+    && echo 'extension=redis.so' >> /etc/php.ini \
+;fi
+
+#### 安装swoole ####
+ARG INSTALL_SWOOLE=false
+RUN if [ ${INSTALL_SWOOLE} = true ]; then \
+    curl -L -o /tmp/swoole.tar.gz "https://github.com/swoole/swoole-src/archive/v2.1.3.tar.gz" \
+    && mkdir -p swoole_tmp \
+    && tar -C swoole_tmp -zxvf /tmp/swoole.tar.gz --strip 1 \
+    && cd swoole_tmp \
+    && phpize \
+    && ./configure --enable-async-redis  --enable-openssl \
+    && make -j$(nproc) \
+    && make install \
+    && cd .. \
+    && rm -fr swoole_tmp \
+    && rm -fr /tmp/swoole.tar.gz \
+    && echo 'extension=swoole.so' >> /etc/php.ini \
+;fi

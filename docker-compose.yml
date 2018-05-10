@@ -1,0 +1,62 @@
+version: '2'
+
+### 网络模式 ###
+
+networks:
+  frontend:
+    driver: "bridge"
+  backend:
+    driver: "bridge"
+
+### 目录空间及容器 ###
+
+services:
+
+    #工作路径
+    applications:
+      image: coppit/inotify-command
+      volumes:
+        - ${WORKSPACE}:/var/www
+    
+    #构建php71      
+    php71:
+      build:
+        context: ./php-fpm
+        args:
+          - INSTALL_SYSTOOLS=${INSTALL_SYSTOOLS}
+          - INSTALL_PHP=${PHP_FPM_INSTALL_PHP}
+          - INSTALL_LIBZIP=${PHP_FPM_INSTALL_LIBZIP}
+          - INSTALL_HIREDIS=${PHP_FPM_INSTALL_HIREDIS}
+          - INSTALL_COMPOSER=${PHP_FPM_INSTALL_COMPOSER}
+          - INSTALL_INOTIFY=${PHP_FPM_INSTALL_INOTIFY}
+          - INSTALL_ZIPARCHIVE=${PHP_FPM_INSTALL_ZIPARCHIVE}
+          - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
+          - INSTALL_SWOOLE=${PHP_FPM_INSTALL_SWOOLE}
+
+        dockerfile: "Dockerfile-${PHP_VERSION}"
+      volumes_from:
+        - applications
+      extra_hosts:
+        - "dockerhost:${DOCKER_HOST_IP}"
+      ports:
+        - "${SD_HTTP_FOREIGN_PORT}:9081"
+        - "7202:6202"
+        - "7203:6203"
+        - "7204:6204"
+      tty: true
+      privileged: true
+      links:
+        - redis
+      networks:
+        - frontend
+        - backend
+       
+    #构建redis
+    redis:
+      build: ./redis
+      volumes:
+        - ${DATA_SAVE_PATH}/redis:/data
+      ports:
+        - "${SD_REDIS}:6379"
+      networks:
+        - backend
